@@ -1,0 +1,30 @@
+# ==== PYTHON CACHE ====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ==== VENV ====
+.venv/
+venv/
+
+# ==== GIT ====
+.git
+.gitignore
+
+# ==== IDE ====
+.idea/
+.vscode/
+
+# ==== ЛОГИ ====
+*.log
+logs/
+
+# ==== ALEMBIC ====
+alembic/
+alembic.ini
+
+# ==== КОНФИГИ ====
+.env
+.env.*
+docker-compose.yml
