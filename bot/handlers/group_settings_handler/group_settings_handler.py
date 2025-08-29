@@ -1,8 +1,10 @@
+from calendar import error
+
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy.ext.asyncio import AsyncSession
-from bot.services.group_settings import (
+from bot.services.group_settings_logic import (
     get_admin_groups,
     check_admin_rights,
     get_group_by_chat_id,
@@ -99,9 +101,32 @@ async def toggle_visual_captcha_callback(callback: types.CallbackQuery, session:
 @group_settings_router.callback_query(F.data == "back_to_groups")
 async def back_to_groups_callback(callback: types.CallbackQuery, session: AsyncSession):
     """Возврат к списку групп"""
-    # Повторно вызываем команду settings
-    await settings_command(callback.message, session)
+    user_id = callback.from_user.id
+    logger.info(f"Возврат к списку групп от пользователя {user_id}")
+
+    try:
+        # получаем группы пользователя через сервис
+        user_groups = await get_admin_groups(user_id, session)
+
+        if not user_groups:
+            await callback.message.edit_text(" ❌ У вас нет прав администратора ни в одной группе где есть бот")
+            return
+        # формируем клавиатуру со списком групп
+        keyboard = create_groups_keyboard(user_groups)
+
+        text = "🏠 ** Ваши группы: **\n\nВыберите группы для настройки:"
+
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+    except Exception as e:
+        logger.error(f"Ошибка при возврате к списку групп: {e}")
+        await callback.message.edit_text("❌ Произошла ошибка при получений ваших групп.")
     await callback.answer()
+
+
+    # # Повторно вызываем команду settings
+    # await settings_command(callback.message, session)
+    # await callback.answer()
 
 
 def create_groups_keyboard(groups):
