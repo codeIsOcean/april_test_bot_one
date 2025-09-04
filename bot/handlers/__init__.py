@@ -10,7 +10,7 @@ from .visual_captcha import visual_captcha_router
 from .moderation_handlers import moderation_handlers_router
 
 # Импортируем group_settings_router ТОЛЬКО один раз
-from .group_settings_handler.group_settings_handler import group_settings_router
+from .group_settings_handler.groups_settings_in_private_handler import group_settings_router
 
 # Подключаем роутеры
 handlers_router.include_router(universal_deeplink_router)

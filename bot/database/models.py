@@ -122,6 +122,7 @@ class GroupUsers(Base):
     joined_at = Column(DateTime, default=datetime.utcnow)
     last_activity = Column(DateTime, default=datetime.utcnow)
     is_admin = Column(Boolean, default=False)
+    is_creator = Column(Boolean, default=False)  # Является ли создателем группы
     can_view_admins = Column(Boolean, default=True)  # Право просмотра администраторов
     # Связи с другими таблицами
     user = relationship("User", backref="group_memberships")

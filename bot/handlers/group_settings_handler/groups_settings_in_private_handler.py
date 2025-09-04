@@ -4,7 +4,7 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy.ext.asyncio import AsyncSession
-from bot.services.group_settings_logic import (
+from bot.services.groups_settings_in_private_logic import (
     get_admin_groups,
     check_admin_rights,
     get_group_by_chat_id,
