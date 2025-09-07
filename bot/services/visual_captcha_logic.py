@@ -121,6 +121,88 @@ async def delete_message_after_delay(bot: Bot, chat_id: int, message_id: int, de
         logger.error(f"Не удалось удалить сообщение {message_id}: {e}")
 
 
+async def send_captcha_reminder(bot: Bot, chat_id: int, user_id: int, group_name: str):
+    """Отправляет напоминание о необходимости решить капчу через 2-3 минуты."""
+    try:
+        # Получаем информацию о группе для красивого сообщения
+        group_display_name = group_name.replace("_", " ").title()
+        group_link = None
+        
+        if group_name.startswith("private_"):
+            try:
+                chat_id_for_name = int(group_name.replace("private_", ""))
+                chat = await bot.get_chat(chat_id_for_name)
+                group_display_name = chat.title
+                # Для приватных групп создаем инвайт-ссылку
+                invite = await bot.create_chat_invite_link(
+                    chat_id=chat_id_for_name,
+                    name=f"Reminder for user {user_id}",
+                    creates_join_request=False,
+                )
+                group_link = invite.invite_link
+            except Exception:
+                pass
+        elif group_name.startswith("-") and group_name[1:].isdigit():
+            try:
+                chat_id_for_name = int(group_name)
+                chat = await bot.get_chat(chat_id_for_name)
+                group_display_name = chat.title
+                if chat.username:
+                    group_link = f"https://t.me/{chat.username}"
+                else:
+                    # Для приватных групп создаем инвайт-ссылку
+                    invite = await bot.create_chat_invite_link(
+                        chat_id=chat_id_for_name,
+                        name=f"Reminder for user {user_id}",
+                        creates_join_request=False,
+                    )
+                    group_link = invite.invite_link
+            except Exception:
+                pass
+        else:
+            # Публичная группа по username
+            group_link = f"https://t.me/{group_name}"
+        
+        # Формируем текст с ссылкой на группу
+        if group_link:
+            reminder_text = (
+                f"⏰ <b>Напоминание о капче</b>\n\n"
+                f"Вы не решили капчу для вступления в группу <a href='{group_link}'>{group_display_name}</a>.\n"
+                f"Пожалуйста, решите капчу в течение следующих 2 минут, иначе ваш запрос будет отклонен."
+            )
+        else:
+            reminder_text = (
+                f"⏰ <b>Напоминание о капче</b>\n\n"
+                f"Вы не решили капчу для вступления в группу <b>{group_display_name}</b>.\n"
+                f"Пожалуйста, решите капчу в течение следующих 2 минут, иначе ваш запрос будет отклонен."
+            )
+        
+        reminder_msg = await bot.send_message(
+            chat_id=user_id,
+            text=reminder_text,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+        
+        # Удаляем напоминание через 2 минуты
+        asyncio.create_task(delete_message_after_delay(bot, user_id, reminder_msg.message_id, 120))
+        
+        logger.info(f"📨 Отправлено напоминание о капче пользователю {user_id}")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка при отправке напоминания о капче: {e}")
+
+
+async def schedule_captcha_reminder(bot: Bot, user_id: int, group_name: str, delay_minutes: int = 2):
+    """Планирует отправку напоминания о капче через указанное количество минут."""
+    await asyncio.sleep(delay_minutes * 60)  # Конвертируем минуты в секунды
+    
+    # Проверяем, что пользователь все еще не решил капчу
+    captcha_data = await get_captcha_data(user_id)
+    if captcha_data and captcha_data["group_name"] == group_name:
+        await send_captcha_reminder(bot, user_id, user_id, group_name)
+
+
 async def save_join_request(user_id: int, chat_id: int, group_id: str) -> None:
     """Сохраняет информацию о join-request на 1 час."""
     await redis.setex(f"join_request:{user_id}:{group_id}", 3600, str(chat_id))

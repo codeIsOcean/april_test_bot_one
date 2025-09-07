@@ -1,20 +1,20 @@
 # Импорт всех роутеров для удобного подключения
 from .bot_activity_handlers import bot_activity_handlers_router
+from .bot_activity_journal.bot_activity_journal import bot_activity_journal_router
 from .deep_link_handlers import universal_deeplink_router
 from .group_settings_handler import group_settings_router
 from .moderation_handlers import moderation_handlers_router
 from .visual_captcha import visual_captcha_router
-from .bot_moderation_handlers.new_member_requested_to_join_mute_handlers import new_member_requested_handler
-from .broadcast_handlers import broadcast_router
+from .broadcast_handlers.broadcast_handlers import broadcast_router
 
 # Объединяем все роутеры в один
 from aiogram import Router
 
 handlers_router = Router()
 handlers_router.include_router(bot_activity_handlers_router)
+handlers_router.include_router(bot_activity_journal_router)
 handlers_router.include_router(universal_deeplink_router)
 handlers_router.include_router(group_settings_router)
 handlers_router.include_router(moderation_handlers_router)
 handlers_router.include_router(visual_captcha_router)
-handlers_router.include_router(new_member_requested_handler)
 handlers_router.include_router(broadcast_router)

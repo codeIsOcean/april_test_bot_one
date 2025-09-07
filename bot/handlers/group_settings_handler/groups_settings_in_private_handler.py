@@ -12,6 +12,7 @@ from bot.services.groups_settings_in_private_logic import (
     toggle_visual_captcha,
     get_mute_new_members_status
 )
+from bot.services.bot_activity_journal.bot_activity_journal_logic import log_visual_captcha_toggle, log_mute_settings_toggle
 from bot.services.new_member_requested_to_join_mute_logic import (
     create_mute_settings_keyboard,
     get_mute_settings_text
@@ -91,6 +92,19 @@ async def toggle_visual_captcha_callback(callback: types.CallbackQuery, session:
         new_status = await toggle_visual_captcha(session, chat_id)
         status_text = "включена" if new_status else "выключена"
 
+        # Логируем изменение настроек в журнал действий
+        try:
+            # Получаем информацию о группе из Telegram API
+            chat_info = await callback.bot.get_chat(chat_id)
+            await log_visual_captcha_toggle(
+                bot=callback.bot,
+                user=callback.from_user,
+                chat=chat_info,
+                enabled=new_status
+            )
+        except Exception as log_error:
+            logger.error(f"Ошибка при логировании изменения визуальной капчи: {log_error}")
+
         # Обновляем меню
         group = await get_group_by_chat_id(session, chat_id)
         keyboard = await create_group_management_keyboard(session, chat_id)
@@ -157,10 +171,23 @@ async def enable_mute_new_members_callback(callback: types.CallbackQuery, sessio
 
         # Включаем мут через сервис
         from bot.services.new_member_requested_to_join_mute_logic import set_mute_new_members_status
-        success = await set_mute_new_members_status(chat_id, True)
+        success = await set_mute_new_members_status(chat_id, True, session)
         
         if success:
             await callback.answer("✅ Функция включена")
+
+            # Логируем изменение настроек мута в журнал действий
+            try:
+                # Получаем информацию о группе из Telegram API
+                chat_info = await callback.bot.get_chat(chat_id)
+                await log_mute_settings_toggle(
+                    bot=callback.bot,
+                    user=callback.from_user,
+                    chat=chat_info,
+                    enabled=True
+                )
+            except Exception as log_error:
+                logger.error(f"Ошибка при логировании изменения настроек мута: {log_error}")
 
             # 🔄 Перерисовываем экран настроек
             keyboard_data = await create_mute_settings_keyboard(chat_id, session)
@@ -203,11 +230,23 @@ async def disable_mute_new_members_callback(callback: types.CallbackQuery, sessi
 
         # Выключаем мут через сервис
         from bot.services.new_member_requested_to_join_mute_logic import set_mute_new_members_status
-        success = await set_mute_new_members_status(chat_id, False)
+        success = await set_mute_new_members_status(chat_id, False, session)
         
         if success:
-          
             await callback.answer("❌ Функция выключена")
+
+            # Логируем изменение настроек мута в журнал действий
+            try:
+                # Получаем информацию о группе из Telegram API
+                chat_info = await callback.bot.get_chat(chat_id)
+                await log_mute_settings_toggle(
+                    bot=callback.bot,
+                    user=callback.from_user,
+                    chat=chat_info,
+                    enabled=False
+                )
+            except Exception as log_error:
+                logger.error(f"Ошибка при логировании изменения настроек мута: {log_error}")
 
             # 🔄 Перерисовываем экран настроек
             keyboard_data = await create_mute_settings_keyboard(chat_id, session)

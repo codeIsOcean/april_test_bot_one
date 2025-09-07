@@ -64,7 +64,7 @@ async def new_member_requested_handler_settings(callback: CallbackQuery):
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
-@new_member_requested_handler.callback_query(F.data.startswith("mute_new_members:enable:"))
+@new_member_requested_handler.callback_query(F.data.startswith("mute_settings:enable:"))
 async def enable_mute_new_members(callback: CallbackQuery):
     """Включение мута новых участников"""
     try:
@@ -93,7 +93,7 @@ async def enable_mute_new_members(callback: CallbackQuery):
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
-@new_member_requested_handler.callback_query(F.data.startswith("mute_new_members:disable:"))
+@new_member_requested_handler.callback_query(F.data.startswith("mute_settings:disable:"))
 async def disable_mute_new_members(callback: CallbackQuery):
     """Выключение мута новых участников"""
     try:

@@ -70,7 +70,7 @@ async def get_mute_new_members_status(chat_id: int, session: AsyncSession = None
         return False
 
 
-async def set_mute_new_members_status(chat_id: int, enabled: bool) -> bool:
+async def set_mute_new_members_status(chat_id: int, enabled: bool, session: AsyncSession = None) -> bool:
     """
     Устанавливает статус мута новых участников для группы
     Сохраняет в Redis и БД
@@ -80,7 +80,8 @@ async def set_mute_new_members_status(chat_id: int, enabled: bool) -> bool:
         await redis.set(f"group:{chat_id}:mute_new_members", "1" if enabled else "0")
         
         # Сохраняем в БД
-        async with get_session() as session:
+        if session:
+            # Используем переданную сессию
             result = await session.execute(
                 select(ChatSettings).where(ChatSettings.chat_id == chat_id)
             )
@@ -102,10 +103,34 @@ async def set_mute_new_members_status(chat_id: int, enabled: bool) -> bool:
                         photo_filter_mute_minutes=60
                     )
                 )
-            
-            await session.commit()
-            logger.info(f"✅ Статус мута новых участников для группы {chat_id}: {'включен' if enabled else 'выключен'}")
-            return True
+        else:
+            # Создаем новую сессию
+            async with get_session() as new_session:
+                result = await new_session.execute(
+                    select(ChatSettings).where(ChatSettings.chat_id == chat_id)
+                )
+                settings = result.scalar_one_or_none()
+                
+                if settings:
+                    await new_session.execute(
+                        update(ChatSettings)
+                        .where(ChatSettings.chat_id == chat_id)
+                        .values(mute_new_members=enabled)
+                    )
+                else:
+                    await new_session.execute(
+                        insert(ChatSettings).values(
+                            chat_id=chat_id,
+                            mute_new_members=enabled,
+                            enable_photo_filter=False,
+                            admins_bypass_photo_filter=False,
+                            photo_filter_mute_minutes=60
+                        )
+                    )
+                await new_session.commit()
+        
+        logger.info(f"✅ Статус мута новых участников для группы {chat_id}: {'включен' if enabled else 'выключен'}")
+        return True
             
     except Exception as e:
         logger.error(f"Ошибка при установке статуса мута для группы {chat_id}: {e}")

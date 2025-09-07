@@ -32,7 +32,7 @@ async def broadcast_settings(callback: CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📢 Отправить рассылку", callback_data="start_broadcast")],
         [InlineKeyboardButton(text="📊 Статистика пользователей", callback_data="users_stats")],
-        [InlineKeyboardButton(text="« Назад", callback_data="back_to_groups")]
+        [InlineKeyboardButton(text="« Назад", callback_data="back_to_broadcast_settings")]
     ])
     
     await callback.message.edit_text(
@@ -172,6 +172,33 @@ async def cancel_broadcast(callback: CallbackQuery, state: FSMContext):
     """Отменяет рассылку"""
     await state.clear()
     await callback.message.edit_text("❌ Рассылка отменена")
+    await callback.answer()
+
+
+@broadcast_router.callback_query(F.data == "back_to_broadcast_settings")
+async def back_to_broadcast_settings(callback: CallbackQuery):
+    """Возврат к настройкам рассылок"""
+    if not await is_authorized_user(callback.from_user.id):
+        await callback.answer("❌ У вас нет прав для рассылок", show_alert=True)
+        return
+    
+    async with get_session() as session:
+        users_count = await get_all_users_count(session)
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📢 Отправить рассылку", callback_data="start_broadcast")],
+        [InlineKeyboardButton(text="📊 Статистика пользователей", callback_data="users_stats")],
+        [InlineKeyboardButton(text="« Назад", callback_data="back_to_groups")]
+    ])
+    
+    await callback.message.edit_text(
+        f"📢 <b>Настройки рассылок</b>\n\n"
+        f"👥 Всего пользователей в БД: <b>{users_count}</b>\n\n"
+        f"🔒 Доступ: Только @texas_dev\n\n"
+        f"Выберите действие:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
     await callback.answer()
 
 @broadcast_router.message(F.text == "/checkusers")

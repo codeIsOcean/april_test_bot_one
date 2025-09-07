@@ -33,9 +33,11 @@ from bot.services.visual_captcha_logic import (
     get_group_display_name,
     save_user_to_db,
     get_group_link_from_redis_or_create,
+    schedule_captcha_reminder,
 )
 from bot.services.scammer_tracker_logic import track_captcha_failure
 from bot.database.queries import get_group_by_name
+from bot.services.bot_activity_journal.bot_activity_journal_logic import log_join_request
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,15 @@ async def handle_join_request(join_request: ChatJoinRequest):
             disable_web_page_preview=True,
         )
         logger.info(f"✅ Отправлено сообщение пользователю {user_id} о прохождении капчи")
+
+        # Логируем запрос на вступление в журнал действий
+        await log_join_request(
+            bot=join_request.bot,
+            user=user,
+            chat=chat,
+            captcha_status="КАПЧА_ОТПРАВЛЕНА",
+            saved_to_db=False
+        )
 
         # Сохраняем ID сообщения на час (для последующего удаления)
         await redis.setex(f"user_messages:{user_id}", 3600, str(msg.message_id))
@@ -206,8 +217,12 @@ async def process_visual_captcha_deep_link(message: Message, bot: Bot, state: FS
             message_ids = [captcha_msg.message_id]
             await state.update_data(message_ids=message_ids)
 
-            # Удалим капчу через 120 секунд
-            asyncio.create_task(delete_message_after_delay(bot, message.chat.id, captcha_msg.message_id, 120))
+            # Удалим капчу через 5 минут (чтобы дать время на напоминание)
+            asyncio.create_task(delete_message_after_delay(bot, message.chat.id, captcha_msg.message_id, 300))
+            
+            # Планируем напоминание через 2 минуты
+            asyncio.create_task(schedule_captcha_reminder(bot, message.from_user.id, group_name, 2))
+            
             await state.set_state(CaptchaStates.waiting_for_captcha)
 
         except Exception as network_error:
@@ -222,7 +237,10 @@ async def process_visual_captcha_deep_link(message: Message, bot: Bot, state: FS
                 )
                 await state.update_data(message_ids=[fallback_msg.message_id])
                 await state.set_state(CaptchaStates.waiting_for_captcha)
-                asyncio.create_task(delete_message_after_delay(bot, message.chat.id, fallback_msg.message_id, 120))
+                asyncio.create_task(delete_message_after_delay(bot, message.chat.id, fallback_msg.message_id, 300))
+                
+                # Планируем напоминание через 2 минуты
+                asyncio.create_task(schedule_captcha_reminder(bot, message.from_user.id, group_name, 2))
             except Exception as fallback_error:
                 logger.error(f"❌ Критическая ошибка при отправке fallback-сообщения: {fallback_error}")
                 await message.answer("Произошла критическая ошибка. Попробуйте позже.")
@@ -542,9 +560,12 @@ async def process_captcha_answer(message: Message, state: FSMContext, session: A
 
             await state.update_data(message_ids=message_ids)
 
-            # Удалим через 120 секунд
+            # Удалим через 5 минут
             for mid in message_ids:
-                asyncio.create_task(delete_message_after_delay(message.bot, message.chat.id, mid, 120))
+                asyncio.create_task(delete_message_after_delay(message.bot, message.chat.id, mid, 300))
+            
+            # Планируем напоминание через 2 минуты для новой капчи
+            asyncio.create_task(schedule_captcha_reminder(message.bot, message.from_user.id, group_name, 2))
 
         except Exception as captcha_error:
             logger.error(f"❌ Ошибка при генерации новой капчи: {captcha_error}")
