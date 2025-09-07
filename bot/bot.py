@@ -1,5 +1,13 @@
 import asyncio
 import os
+import sys
+
+# Настройка путей для запуска из любой директории
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 # При инициализации бота добавьте параметр timeout
@@ -29,9 +37,9 @@ console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s
 console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
 
-# Настройка Telegram-логгера для важных сообщений
+# Настройка Telegram-логгера для важных сообщений (только действия, не ошибки)
 tg_handler = TelegramLogHandler()
-tg_handler.setLevel(logging.ERROR)  # Отправляем только ERROR и выше
+tg_handler.setLevel(logging.INFO)  # Отправляем только INFO (действия)
 tg_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 tg_handler.setFormatter(tg_formatter)
 logger.addHandler(tg_handler)
@@ -95,3 +103,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

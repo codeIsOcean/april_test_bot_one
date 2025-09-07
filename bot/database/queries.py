@@ -34,3 +34,11 @@ async def save_group(session: AsyncSession, chat_id, title, creator: User = None
         session.add(group)
         await session.commit()
     return group
+
+
+# функция поиска группы по имени (username)
+async def get_group_by_name(session: AsyncSession, group_name: str):
+    """Поиск группы по username (название группы в Telegram)"""
+    # Пока что возвращаем None, так как в модели Group нет поля username
+    # В будущем можно добавить поле username в модель Group
+    return None

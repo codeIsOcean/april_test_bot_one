@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from bot.database.models import Group, UserGroup, CaptchaSettings
+from bot.database.models import Group, UserGroup, CaptchaSettings, ChatSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,38 @@ async def get_visual_captcha_status(session: AsyncSession, chat_id: int) -> bool
         return is_enabled
     except Exception as e:
         logger.error(f"Ошибка при получении статуса капчи: {e}")
+        return False
+
+
+async def get_mute_new_members_status(session: AsyncSession, chat_id: int) -> bool:
+    """Получает статус мута новых участников для группы"""
+    try:
+        from bot.services.redis_conn import redis
+        
+        # Проверяем Redis
+        mute_enabled = await redis.get(f"group:{chat_id}:mute_new_members")
+        
+        if mute_enabled is not None:
+            return mute_enabled == "1"
+        
+        # Если в Redis нет данных, проверяем в БД
+        result = await session.execute(
+            select(ChatSettings).where(ChatSettings.chat_id == chat_id)
+        )
+        settings = result.scalar_one_or_none()
+        
+        if settings and hasattr(settings, 'mute_new_members'):
+            mute_enabled = "1" if settings.mute_new_members else "0"
+            # Обновляем Redis
+            await redis.set(f"group:{chat_id}:mute_new_members", mute_enabled)
+            return settings.mute_new_members
+        else:
+            # По умолчанию выключено
+            await redis.set(f"group:{chat_id}:mute_new_members", "0")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Ошибка при получении статуса мута для группы {chat_id}: {e}")
         return False
 
 

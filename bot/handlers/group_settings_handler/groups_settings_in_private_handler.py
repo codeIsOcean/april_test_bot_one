@@ -9,7 +9,12 @@ from bot.services.groups_settings_in_private_logic import (
     check_admin_rights,
     get_group_by_chat_id,
     get_visual_captcha_status,
-    toggle_visual_captcha
+    toggle_visual_captcha,
+    get_mute_new_members_status
+)
+from bot.services.new_member_requested_to_join_mute_logic import (
+    create_mute_settings_keyboard,
+    get_mute_settings_text
 )
 import logging
 
@@ -98,6 +103,137 @@ async def toggle_visual_captcha_callback(callback: types.CallbackQuery, session:
         await callback.answer("❌ Произошла ошибка", show_alert=True)
 
 
+@group_settings_router.callback_query(F.data.startswith("mute_new_members_settings_"))
+async def mute_new_members_settings_callback(callback: types.CallbackQuery, session: AsyncSession):
+    """Обработчик настроек мута новых участников"""
+    try:
+        chat_id = int(callback.data.split("_")[-1])
+        user_id = callback.from_user.id
+
+        # Проверяем права через сервис
+        if not await check_admin_rights(session, user_id, chat_id):
+            await callback.answer("❌ Нет прав администратора", show_alert=True)
+            return
+
+        # Получаем данные для клавиатуры
+        keyboard_data = await create_mute_settings_keyboard(chat_id, session)
+        
+        # Создаем клавиатуру
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text=btn["text"], callback_data=btn["callback_data"])
+                for btn in row
+            ]
+            for row in keyboard_data["buttons"]
+        ])
+        
+        # Формируем текст сообщения
+        message_text = await get_mute_settings_text(status=keyboard_data["status"])
+        
+        await callback.message.edit_text(
+            message_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+
+        await callback.answer()
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке настроек мута: {e}")
+        await callback.answer("❌ Произошла ошибка", show_alert=True)
+
+
+@group_settings_router.callback_query(F.data.startswith("mute_new_members:enable:"))
+async def enable_mute_new_members_callback(callback: types.CallbackQuery, session: AsyncSession):
+    """Включение мута новых участников"""
+    try:
+        chat_id = int(callback.data.split(":")[-1])
+        user_id = callback.from_user.id
+
+        # Проверяем права через сервис
+        if not await check_admin_rights(session, user_id, chat_id):
+            await callback.answer("❌ Нет прав администратора", show_alert=True)
+            return
+
+        # Включаем мут через сервис
+        from bot.services.new_member_requested_to_join_mute_logic import set_mute_new_members_status
+        success = await set_mute_new_members_status(chat_id, True)
+        
+        if success:
+            await callback.answer("✅ Функция включена")
+
+            # 🔄 Перерисовываем экран настроек
+            keyboard_data = await create_mute_settings_keyboard(chat_id, session)
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(text=btn["text"], callback_data=btn["callback_data"])
+                    for btn in row
+                ]
+                for row in keyboard_data["buttons"]
+            ])
+
+            message_text = await get_mute_settings_text(status=keyboard_data["status"])
+
+            await callback.message.edit_text(
+                message_text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+
+
+        else:
+            await callback.answer("❌ Ошибка при включении функции", show_alert=True)
+
+    except Exception as e:
+        logger.error(f"Ошибка при включении мута: {e}")
+        await callback.answer("❌ Произошла ошибка", show_alert=True)
+
+
+@group_settings_router.callback_query(F.data.startswith("mute_new_members:disable:"))
+async def disable_mute_new_members_callback(callback: types.CallbackQuery, session: AsyncSession):
+    """Выключение мута новых участников"""
+    try:
+        chat_id = int(callback.data.split(":")[-1])
+        user_id = callback.from_user.id
+
+        # Проверяем права через сервис
+        if not await check_admin_rights(session, user_id, chat_id):
+            await callback.answer("❌ Нет прав администратора", show_alert=True)
+            return
+
+        # Выключаем мут через сервис
+        from bot.services.new_member_requested_to_join_mute_logic import set_mute_new_members_status
+        success = await set_mute_new_members_status(chat_id, False)
+        
+        if success:
+          
+            await callback.answer("❌ Функция выключена")
+
+            # 🔄 Перерисовываем экран настроек
+            keyboard_data = await create_mute_settings_keyboard(chat_id, session)
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(text=btn["text"], callback_data=btn["callback_data"])
+                    for btn in row
+                ]
+                for row in keyboard_data["buttons"]
+            ])
+
+            message_text = await get_mute_settings_text(status=keyboard_data["status"])
+
+            await callback.message.edit_text(
+                message_text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+        else:
+            await callback.answer("❌ Ошибка при выключении функции", show_alert=True)
+
+    except Exception as e:
+        logger.error(f"Ошибка при выключении мута: {e}")
+        await callback.answer("❌ Произошла ошибка", show_alert=True)
+
+
 @group_settings_router.callback_query(F.data == "back_to_groups")
 async def back_to_groups_callback(callback: types.CallbackQuery, session: AsyncSession):
     """Возврат к списку групп"""
@@ -160,11 +296,23 @@ async def create_group_management_keyboard(session: AsyncSession, chat_id: int):
     # Получаем статус визуальной капчи через сервис
     visual_captcha_status = await get_visual_captcha_status(session, chat_id)
     visual_captcha_text = "🔴 Выключить визуальную капчу" if visual_captcha_status else "🟢 Включить визуальную капчу"
+    
+    # Получаем статус мута новых участников
+    mute_status = await get_mute_new_members_status(session, chat_id)
+    mute_text = "🔇 Настройки мута новых участников"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text=visual_captcha_text,
             callback_data=f"toggle_visual_captcha_{chat_id}"
+        )],
+        [InlineKeyboardButton(
+            text=mute_text,
+            callback_data=f"mute_new_members_settings_{chat_id}"
+        )],
+        [InlineKeyboardButton(
+            text="📢 Рассылки",
+            callback_data="broadcast_settings"
         )],
         [InlineKeyboardButton(
             text="🔙 Назад к списку групп",

@@ -1,0 +1,32 @@
+{
+    "python.defaultInterpreterPath": "python",
+    "python.terminal.activateEnvironment": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.formatting.provider": "black",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/node_modules": true,
+        "**/.git": true,
+        "**/.DS_Store": true
+    },
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/node_modules": true,
+        "**/.git": true
+    },
+    "cursor.ai.enableIndexing": true,
+    "cursor.ai.indexEntireProject": true,
+    "cursor.ai.indexDependencies": true,
+    "cursor.ai.enableCrossFileSearch": true
+}
+
+
+
+

@@ -153,3 +153,15 @@ async def sync_group_and_admins(chat_id: int, title: str, bot_id: int, bot: Bot)
             logger.exception(f"[SYNC_GROUP_ADMINS_FAIL] chat_id={chat_id}")
             await session.rollback()
             raise
+
+
+async def get_bot_username(bot: Bot) -> Optional[str]:
+    """
+    Получает username бота.
+    """
+    try:
+        bot_info = await bot.me()
+        return bot_info.username
+    except Exception:
+        logger.exception("[GET_BOT_USERNAME_FAIL]")
+        return None

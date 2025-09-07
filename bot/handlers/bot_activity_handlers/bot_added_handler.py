@@ -12,7 +12,7 @@ from aiogram.types import (
     CallbackQuery,
     Message,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession 
 
 from bot.services.bot_added_handler_logic import (
     sync_group_and_admins,
@@ -46,10 +46,26 @@ def _settings_keyboard(chat_id: int) -> InlineKeyboardMarkup:
     )
 
 
+def _go_to_pm_keyboard(bot_username: str) -> InlineKeyboardMarkup:
+    """
+    Клавиатура для перехода к боту в ЛС.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💬 Перейти ко мне в ЛС",
+                    url=f"https://t.me/{bot_username}",
+                )
+            ]
+        ]
+    )
+
+
 # =======================================
 # ОБРАБОТКА СМЕНЫ СТАТУСА САМОГО БОТА
 # =======================================
-@bot_added_router.my_chat_member()
+@bot_added_router.my_chat_member() 
 async def on_my_status_change(
         event: ChatMemberUpdated,
         bot: Bot,
@@ -161,6 +177,8 @@ async def on_settings_pm(
     - Пытаемся написать в ЛС
     - В группе отвечаем, что настройки высланы в личку
     """
+
+    
     if not cq.message:
         await cq.answer("Сообщение не найдено.", show_alert=True)
         return
@@ -200,19 +218,34 @@ async def on_settings_pm(
     except Exception:
         logger.exception(f"[PM_SEND_FAIL] user_id={user_id}")
 
+    # Получаем username бота для кнопки
+    bot_info = await bot.me()
+    bot_username = bot_info.username
+
     # Отвечаем в группе: получилось/не получилось
-    if pm_ok:
+    if pm_ok and bot_username:
         await safe_send(
             bot,
             chat_id,
             f"✅ Настройки высланы администратору {user.full_name} в личные сообщения.",
+            reply_markup=_go_to_pm_keyboard(bot_username)
         )
-    else:
+    elif bot_username:
         # если нельзя написать в ЛС, даём ссылку на бота (если есть username)
         tail = f"\n\nОткрой бота: {linked}" if linked else ""
         await safe_send(
             bot,
             chat_id,
             f"⚠️ Не удалось отправить настройки в личку администратору {user.full_name}."
-            f"{tail}\nНапиши боту /start и нажми кнопку ещё раз.",
+            f"{tail}\nНапиши боту /start и нажми кнопку ниже.",
+            reply_markup=_go_to_pm_keyboard(bot_username)
         )
+    else:
+        # Если нет username у бота
+        await safe_send(
+            bot,
+            chat_id,
+            f"⚠️ Не удалось отправить настройки в личку администратору {user.full_name}.\n"
+            f"Найди бота в поиске и напиши ему /start.",
+        )
+

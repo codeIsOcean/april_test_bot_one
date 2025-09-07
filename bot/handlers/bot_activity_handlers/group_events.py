@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from bot.database.models import Group, User, GroupUsers
 from bot.services.visual_captcha_logic import (
+    get_visual_captcha_status,
     generate_visual_captcha,
     save_captcha_data,
     create_deeplink_for_captcha,
@@ -135,12 +136,8 @@ async def handle_join_request(chat_join_request: ChatJoinRequest, session: Async
 
         logger.info(f"✅ Визуальная капча активирована в группе {chat_id}, отправляем капчу пользователю")
 
-        # Генерируем капчу
-        answer, captcha_image = await generate_visual_captcha()
-
-        # Сохраняем данные капчи
+        # НЕ ГЕНЕРИРУЕМ КАПЧУ СРАЗУ - только создаем кнопку
         group_name = str(chat_id)
-        await save_captcha_data(user.id, answer, group_name)
 
         # Создаем deep link
         deep_link = await create_deeplink_for_captcha(chat_join_request.bot, group_name)
@@ -148,16 +145,19 @@ async def handle_join_request(chat_join_request: ChatJoinRequest, session: Async
         # Создаем клавиатуру
         keyboard = await get_captcha_keyboard(deep_link)
 
-        # Отправляем капчу пользователю
-        await chat_join_request.bot.send_photo(
-            chat_id=user.id,
-            photo=captcha_image,
-            caption="🔒 Для вступления в группу решите капчу:",
-            reply_markup=keyboard
-        )
-
-        logger.info(f"📤 Капча отправлена пользователю {user.id}")
-
+        # Отправляем ТОЛЬКО текст с кнопкой (БЕЗ ФОТО)
+        try:
+            await chat_join_request.bot.send_message(
+                chat_id=user.id,
+                text="🔒 Для вступления в группу решите капчу:",
+                reply_markup=keyboard
+            )
+            logger.info(f"📤 Капча отправлена пользователю {user.id}")
+        except Exception as send_error:
+            logger.warning(f"⚠️ Не удалось отправить капчу пользовател�� {user.id}: {send_error}")
+            # Пользователь заблокировал бота или не начал диалог
+            return
+        
     except Exception as e:
         logger.error(f"Ошибка при обработке запроса на вступление: {e}")
         await session.rollback()

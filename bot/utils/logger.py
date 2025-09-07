@@ -58,8 +58,10 @@ class TelegramLogHandler(logging.Handler):
                 f"{record.getMessage()}"
             )
 
-            # Не отправлять в Telegram стандартные информационные сообщения о капче
+            # Не отправлять в Telegram ошибки - только действия
             if (
+                    record.levelname != "ERROR" and
+                    record.levelname != "CRITICAL" and
                     "успешно прошел капчу" not in record.getMessage() and
                     "Отправлена капча пользователю" not in record.getMessage() and
                     "не решил капчу вовремя" not in record.getMessage()

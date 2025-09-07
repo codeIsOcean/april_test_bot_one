@@ -14,6 +14,19 @@ class User(Base):
     user_id = Column(BigInteger, unique=True)
     username = Column(String, nullable=True)
     full_name = Column(String, nullable=True)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    language_code = Column(String, nullable=True)
+    is_bot = Column(Boolean, default=False)
+    is_premium = Column(Boolean, default=False)
+    added_to_attachment_menu = Column(Boolean, default=False)
+    can_join_groups = Column(Boolean, default=True)
+    can_read_all_group_messages = Column(Boolean, default=False)
+    supports_inline_queries = Column(Boolean, default=False)
+    can_connect_to_business = Column(Boolean, default=False)
+    has_main_web_app = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     groups = relationship("Group", back_populates="creator", foreign_keys="Group.creator_user_id")
     added_groups = relationship("Group", back_populates="added_by", foreign_keys="Group.added_by_user_id")
@@ -160,6 +173,45 @@ class UserRestriction(Base):
 
     __table_args__ = (
         Index("ix_user_restriction_user_chat", "user_id", "chat_id"),
+    )
+
+
+# 🎭 Отслеживание скаммеров и непрошедших капчу
+class ScammerTracker(Base):
+    __tablename__ = "scammer_tracker"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, nullable=False, index=True)
+    chat_id = Column(BigInteger, ForeignKey("groups.chat_id", ondelete="CASCADE"), nullable=False, index=True)
+    username = Column(String, nullable=True)
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    
+    # Тип нарушения
+    violation_type = Column(String(50), nullable=False)  # captcha_failed, spam, suspicious_behavior
+    violation_count = Column(Integer, default=1)  # Количество нарушений
+    
+    # Статус пользователя
+    is_scammer = Column(Boolean, default=False)  # Является ли скаммером
+    scammer_level = Column(Integer, default=0)  # Уровень скаммера (0-5)
+    
+    # Временные метки
+    first_violation_at = Column(DateTime, default=datetime.utcnow)
+    last_violation_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Дополнительная информация
+    notes = Column(String, nullable=True)  # Заметки администратора
+    is_whitelisted = Column(Boolean, default=False)  # В белом списке
+
+    group = relationship("Group")
+
+    __table_args__ = (
+        Index('idx_scammer_user_chat', 'user_id', 'chat_id'),
+        Index('idx_scammer_level', 'scammer_level'),
+        Index('idx_scammer_violation_type', 'violation_type'),
+        UniqueConstraint('user_id', 'chat_id', name='uix_scammer_user_chat'),
     )
 
 
