@@ -76,6 +76,22 @@ async def sync_group_and_admins(chat_id: int, title: str, bot_id: int, bot: Bot)
 
             # 🤖 Сохраняем бота как администратора
             bot_me = await bot.me()
+            
+            # Сначала создаем запись бота в таблице User, если её нет
+            stmt = select(User).where(User.user_id == bot_me.id)
+            result = await session.execute(stmt)
+            existing_bot_in_users = result.scalar_one_or_none()
+            
+            if not existing_bot_in_users:
+                bot_user_record = User(
+                    user_id=bot_me.id,
+                    username=bot_me.username,
+                    full_name=bot_me.full_name,
+                    is_bot=True
+                )
+                session.add(bot_user_record)
+            
+            # Теперь создаем запись в GroupUsers
             stmt = select(GroupUsers).where(
                 GroupUsers.user_id == bot_me.id,
                 GroupUsers.chat_id == chat_id

@@ -96,6 +96,21 @@ async def bot_added_to_group(event: types.ChatMemberUpdated, session: AsyncSessi
             logger.info(f"Обновлена информация о группе: {chat.title}")
 
         # 3. Добавление пользователя, добавившего бота, как админа
+        # Сначала убеждаемся, что пользователь существует в таблице User
+        result = await session.execute(select(User).where(User.user_id == user.id))
+        db_user_who_added = result.scalar_one_or_none()
+        if not db_user_who_added:
+            db_user_who_added = User(
+                user_id=user.id,
+                username=user.username,
+                full_name=user.full_name,
+                first_name=user.first_name,
+                last_name=user.last_name
+            )
+            session.add(db_user_who_added)
+            await session.flush()
+        
+        # Теперь добавляем в GroupUsers
         result = await session.execute(select(GroupUsers).where(
             GroupUsers.chat_id == chat.id,
             GroupUsers.user_id == user.id
