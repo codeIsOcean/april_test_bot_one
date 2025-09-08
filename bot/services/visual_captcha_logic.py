@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
     """Генерация визуальной капчи (число, текст или простая математика)."""
-    width, height = 500, 200  # Увеличиваем размер для лучшей читаемости
+    width, height = 600, 250  # Еще больше увеличиваем размер для лучшей читаемости
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
 
@@ -39,7 +39,7 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
     fonts = []
     for path in font_paths:
         try:
-            fonts = [ImageFont.truetype(path, size) for size in (60, 65, 70, 75)]  # Увеличиваем размеры шрифтов
+            fonts = [ImageFont.truetype(path, size) for size in (80, 85, 90, 95)]  # Еще больше увеличиваем размеры шрифтов
             logger.info(f"Успешно загружен шрифт: {path}")
             break
         except (IOError, OSError):
@@ -48,9 +48,9 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
     # Если ни один шрифт не найден, создаем шрифт по умолчанию с большим размером
     if not fonts:
         try:
-            # Пробуем создать шрифт по умолчанию с размером
+            # Создаем шрифт по умолчанию с большим размером
             fonts = [ImageFont.load_default()]
-            logger.warning("Используется шрифт по умолчанию")
+            logger.warning("Используется шрифт по умолчанию - символы могут быть мелкими")
         except:
             fonts = [ImageFont.load_default()]
 
@@ -101,7 +101,7 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
         angle = random.randint(-15, 15)
         font = random.choice(fonts)
 
-        char_img = Image.new("RGBA", (80, 90), (255, 255, 255, 0))  # Увеличиваем размер символов
+        char_img = Image.new("RGBA", (100, 120), (255, 255, 255, 0))  # Еще больше увеличиваем размер символов
         char_draw = ImageDraw.Draw(char_img)
         color = (random.randint(0, 100), random.randint(0, 100), random.randint(0, 100))
 
