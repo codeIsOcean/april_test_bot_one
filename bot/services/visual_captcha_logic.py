@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
     """Генерация визуальной капчи (число, текст или простая математика)."""
-    width, height = 800, 300  # Максимальный размер для лучшей читаемости
+    width, height = 1000, 400  # Очень большой размер для крупных символов
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
 
@@ -51,13 +51,20 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
         if not fonts:
             # Создаем шрифт с большим размером программно
             fonts = []
-            for size in (100, 110, 120, 130):
+            for size in (80, 90, 100, 110):
                 try:
                     # Создаем шрифт с указанным размером
-                    font = ImageFont.load_default()
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size)
                     fonts.append(font)
                 except:
-                    fonts.append(ImageFont.load_default())
+                    try:
+                        # Пробуем другой путь
+                        font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", size)
+                        fonts.append(font)
+                    except:
+                        # В крайнем случае используем default, но с масштабированием
+                        font = ImageFont.load_default()
+                        fonts.append(font)
             logger.warning("Создан программный шрифт - символы должны быть крупными")
             
     except Exception as e:
@@ -111,11 +118,18 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
         angle = random.randint(-15, 15)
         font = random.choice(fonts)
 
-        char_img = Image.new("RGBA", (150, 180), (255, 255, 255, 0))  # Максимально увеличиваем размер символов
+        char_img = Image.new("RGBA", (200, 240), (255, 255, 255, 0))  # Очень большой размер символов
         char_draw = ImageDraw.Draw(char_img)
-        color = (random.randint(0, 80), random.randint(0, 80), random.randint(0, 80))  # Более темный цвет
+        color = (random.randint(0, 60), random.randint(0, 60), random.randint(0, 60))  # Очень темный цвет
 
-        char_draw.text((10, 10), ch, font=font, fill=color)  # Больше отступ
+        # Рисуем текст с большим отступом
+        char_draw.text((20, 20), ch, font=font, fill=color)
+        
+        # Если шрифт мелкий, масштабируем изображение
+        if font == ImageFont.load_default():
+            # Масштабируем в 3 раза для читаемости
+            char_img = char_img.resize((600, 720), Image.Resampling.LANCZOS)
+        
         rotated = char_img.rotate(angle, expand=1, fillcolor=(255, 255, 255, 0))
         y_pos = random.randint(height // 3, height // 2)  # Лучшее позиционирование
         img.paste(rotated, (x_offset, y_pos), rotated)

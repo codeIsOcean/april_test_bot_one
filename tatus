@@ -1,0 +1,78 @@
+warning: in the working copy of 'bot/services/visual_captcha_logic.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.cursor/settings.json b/.cursor/settings.json[m
+[1mindex 94d48ff..456cc4f 100644[m
+[1m--- a/.cursor/settings.json[m
+[1m+++ b/.cursor/settings.json[m
+[36m@@ -33,3 +33,4 @@[m
+ [m
+ [m
+ [m
+[41m+[m
+[1mdiff --git a/CURSOR_SETUP.md b/CURSOR_SETUP.md[m
+[1mindex 1fbdb66..ba3d8c9 100644[m
+[1m--- a/CURSOR_SETUP.md[m
+[1m+++ b/CURSOR_SETUP.md[m
+[36m@@ -105,3 +105,4 @@[m [mapril_test_bot_one/[m
+ [m
+ [m
+ [m
+[41m+[m
+[1mdiff --git a/bot/services/visual_captcha_logic.py b/bot/services/visual_captcha_logic.py[m
+[1mindex 4d88baf..36559c0 100644[m
+[1m--- a/bot/services/visual_captcha_logic.py[m
+[1m+++ b/bot/services/visual_captcha_logic.py[m
+[36m@@ -23,7 +23,7 @@[m [mlogger = logging.getLogger(__name__)[m
+ [m
+ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:[m
+     """Генерация визуальной капчи (число, текст или простая математика)."""[m
+[31m-    width, height = 800, 300  # Максимальный размер для лучшей читаемости[m
+[32m+[m[32m    width, height = 1000, 400  # Очень большой размер для крупных символов[m
+     img = Image.new("RGB", (width, height), color=(255, 255, 255))[m
+     d = ImageDraw.Draw(img)[m
+ [m
+[36m@@ -51,13 +51,20 @@[m [masync def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:[m
+         if not fonts:[m
+             # Создаем шрифт с большим размером программно[m
+             fonts = [][m
+[31m-            for size in (100, 110, 120, 130):[m
+[32m+[m[32m            for size in (80, 90, 100, 110):[m
+                 try:[m
+                     # Создаем шрифт с указанным размером[m
+[31m-                    font = ImageFont.load_default()[m
+[32m+[m[32m                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size)[m
+                     fonts.append(font)[m
+                 except:[m
+[31m-                    fonts.append(ImageFont.load_default())[m
+[32m+[m[32m                    try:[m
+[32m+[m[32m                        # Пробуем другой путь[m
+[32m+[m[32m                        font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", size)[m
+[32m+[m[32m                        fonts.append(font)[m
+[32m+[m[32m                    except:[m
+[32m+[m[32m                        # В крайнем случае используем default, но с масштабированием[m
+[32m+[m[32m                        font = ImageFont.load_default()[m
+[32m+[m[32m                        fonts.append(font)[m
+             logger.warning("Создан программный шрифт - символы должны быть крупными")[m
+             [m
+     except Exception as e:[m
+[36m@@ -111,11 +118,18 @@[m [masync def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:[m
+         angle = random.randint(-15, 15)[m
+         font = random.choice(fonts)[m
+ [m
+[31m-        char_img = Image.new("RGBA", (150, 180), (255, 255, 255, 0))  # Максимально увеличиваем размер символов[m
+[32m+[m[32m        char_img = Image.new("RGBA", (200, 240), (255, 255, 255, 0))  # Очень большой размер символов[m
+         char_draw = ImageDraw.Draw(char_img)[m
+[31m-        color = (random.randint(0, 80), random.randint(0, 80), random.randint(0, 80))  # Более темный цвет[m
+[32m+[m[32m        color = (random.randint(0, 60), random.randint(0, 60), random.randint(0, 60))  # Очень темный цвет[m
+ [m
+[31m-        char_draw.text((10, 10), ch, font=font, fill=color)  # Больше отступ[m
+[32m+[m[32m        # Рисуем текст с большим отступом[m
+[32m+[m[32m        char_draw.text((20, 20), ch, font=font, fill=color)[m
+[32m+[m[41m        [m
+[32m+[m[32m        # Если шрифт мелкий, масштабируем изображение[m
+[32m+[m[32m        if font == ImageFont.load_default():[m
+[32m+[m[32m            # Масштабируем в 3 раза для читаемости[m
+[32m+[m[32m            char_img = char_img.resize((600, 720), Image.Resampling.LANCZOS)[m
+[32m+[m[41m        [m
+         rotated = char_img.rotate(angle, expand=1, fillcolor=(255, 255, 255, 0))[m
+         y_pos = random.randint(height // 3, height // 2)  # Лучшее позиционирование[m
+         img.paste(rotated, (x_offset, y_pos), rotated)[m
