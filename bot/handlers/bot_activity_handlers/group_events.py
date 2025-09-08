@@ -6,7 +6,7 @@ from aiogram.types import ChatJoinRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from bot.database.models import Group, User, GroupUsers
+from bot.database.models import Group, User, GroupUsers, UserGroup
 from bot.services.visual_captcha_logic import (
     get_visual_captcha_status,
     generate_visual_captcha,
@@ -78,7 +78,7 @@ async def bot_added_to_group(event: types.ChatMemberUpdated, session: AsyncSessi
             await session.flush()
             logger.info(f"Создана новая группа: {chat.title}")
 
-            # Добавление всех админов в GroupUsers
+            # Добавление всех админов в GroupUsers и UserGroup
             for admin in admins:
                 session.add(GroupUsers(
                     user_id=admin.user.id,
@@ -87,6 +87,11 @@ async def bot_added_to_group(event: types.ChatMemberUpdated, session: AsyncSessi
                     first_name=admin.user.first_name,
                     last_name=admin.user.last_name,
                     is_admin=True
+                ))
+                # Добавляем в UserGroup для проверки прав
+                session.add(UserGroup(
+                    user_id=admin.user.id,
+                    group_id=chat.id
                 ))
                 logger.info(f"Добавлен администратор: {admin.user.full_name} (ID: {admin.user.id})")
 
@@ -125,6 +130,18 @@ async def bot_added_to_group(event: types.ChatMemberUpdated, session: AsyncSessi
                 is_admin=True
             ))
             logger.info(f"Добавлен пользователь, добавивший бота: {user.full_name}")
+
+        # Добавляем в UserGroup для проверки прав
+        result = await session.execute(select(UserGroup).where(
+            UserGroup.user_id == user.id,
+            UserGroup.group_id == chat.id
+        ))
+        if not result.scalar_one_or_none():
+            session.add(UserGroup(
+                user_id=user.id,
+                group_id=chat.id
+            ))
+            logger.info(f"Добавлен пользователь в UserGroup для проверки прав: {user.full_name}")
 
         await session.commit()
         logger.info(f"Информация о группе {chat.title} успешно сохранена")

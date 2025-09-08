@@ -8,7 +8,7 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from bot.database.models import Group, GroupUsers, User
+from bot.database.models import Group, GroupUsers, User, UserGroup
 from bot.database.session import get_session
 
 logger = logging.getLogger(__name__)
@@ -111,6 +111,21 @@ async def sync_group_and_admins(chat_id: int, title: str, bot_id: int, bot: Bot)
                 )
                 session.add(bot_user)
 
+            # Создаем запись в UserGroup для бота (если нужно)
+            stmt = select(UserGroup).where(
+                UserGroup.user_id == bot_me.id,
+                UserGroup.group_id == chat_id
+            )
+            result = await session.execute(stmt)
+            existing_bot_user_group = result.scalar_one_or_none()
+
+            if not existing_bot_user_group:
+                bot_user_group = UserGroup(
+                    user_id=bot_me.id,
+                    group_id=chat_id
+                )
+                session.add(bot_user_group)
+
             # 👥 Получаем и сохраняем всех админов группы
             admins = await bot.get_chat_administrators(chat_id)
             admin_count = 0
@@ -134,7 +149,7 @@ async def sync_group_and_admins(chat_id: int, title: str, bot_id: int, bot: Bot)
                     )
                     session.add(new_user)
 
-                # Сохраняем связь пользователь-группа
+                # Сохраняем связь пользователь-группа в GroupUsers
                 is_creator = (admin.status == ChatMemberStatus.CREATOR)
                 stmt = select(GroupUsers).where(
                     GroupUsers.user_id == user.id,
@@ -160,6 +175,22 @@ async def sync_group_and_admins(chat_id: int, title: str, bot_id: int, bot: Bot)
                         is_creator=is_creator
                     )
                     session.add(group_user)
+
+                # Сохраняем связь пользователь-группа в UserGroup для проверки прав
+                stmt = select(UserGroup).where(
+                    UserGroup.user_id == user.id,
+                    UserGroup.group_id == chat_id
+                )
+                result = await session.execute(stmt)
+                existing_user_group = result.scalar_one_or_none()
+
+                if not existing_user_group:
+                    user_group = UserGroup(
+                        user_id=user.id,
+                        group_id=chat_id
+                    )
+                    session.add(user_group)
+
                 admin_count += 1
 
             await session.commit()
