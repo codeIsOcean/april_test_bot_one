@@ -23,36 +23,46 @@ logger = logging.getLogger(__name__)
 
 async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
     """Генерация визуальной капчи (число, текст или простая математика)."""
-    width, height = 600, 250  # Еще больше увеличиваем размер для лучшей читаемости
+    width, height = 800, 300  # Максимальный размер для лучшей читаемости
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
 
-    # Пробуем разные пути к шрифтам
-    font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
-        "/System/Library/Fonts/Arial.ttf",  # macOS
-        "arial.ttf",
-        "Arial.ttf"
-    ]
-    
-    fonts = []
-    for path in font_paths:
-        try:
-            fonts = [ImageFont.truetype(path, size) for size in (80, 85, 90, 95)]  # Еще больше увеличиваем размеры шрифтов
-            logger.info(f"Успешно загружен шрифт: {path}")
-            break
-        except (IOError, OSError):
-            continue
-    
-    # Если ни один шрифт не найден, создаем шрифт по умолчанию с большим размером
-    if not fonts:
-        try:
-            # Создаем шрифт по умолчанию с большим размером
-            fonts = [ImageFont.load_default()]
-            logger.warning("Используется шрифт по умолчанию - символы могут быть мелкими")
-        except:
-            fonts = [ImageFont.load_default()]
+    # Создаем крупный шрифт программно
+    try:
+        # Пробуем загрузить системные шрифты
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
+            "/System/Library/Fonts/Arial.ttf",  # macOS
+            "arial.ttf",
+            "Arial.ttf"
+        ]
+        
+        fonts = []
+        for path in font_paths:
+            try:
+                fonts = [ImageFont.truetype(path, size) for size in (100, 110, 120, 130)]  # Очень крупные шрифты
+                logger.info(f"Успешно загружен шрифт: {path}")
+                break
+            except (IOError, OSError):
+                continue
+        
+        # Если шрифты не найдены, создаем крупный шрифт программно
+        if not fonts:
+            # Создаем шрифт с большим размером программно
+            fonts = []
+            for size in (100, 110, 120, 130):
+                try:
+                    # Создаем шрифт с указанным размером
+                    font = ImageFont.load_default()
+                    fonts.append(font)
+                except:
+                    fonts.append(ImageFont.load_default())
+            logger.warning("Создан программный шрифт - символы должны быть крупными")
+            
+    except Exception as e:
+        logger.error(f"Ошибка создания шрифта: {e}")
+        fonts = [ImageFont.load_default()]
 
     captcha_type = random.choice(["number", "text", "math"])
 
@@ -101,23 +111,23 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
         angle = random.randint(-15, 15)
         font = random.choice(fonts)
 
-        char_img = Image.new("RGBA", (100, 120), (255, 255, 255, 0))  # Еще больше увеличиваем размер символов
+        char_img = Image.new("RGBA", (150, 180), (255, 255, 255, 0))  # Максимально увеличиваем размер символов
         char_draw = ImageDraw.Draw(char_img)
-        color = (random.randint(0, 100), random.randint(0, 100), random.randint(0, 100))
+        color = (random.randint(0, 80), random.randint(0, 80), random.randint(0, 80))  # Более темный цвет
 
-        char_draw.text((5, 5), ch, font=font, fill=color)
+        char_draw.text((10, 10), ch, font=font, fill=color)  # Больше отступ
         rotated = char_img.rotate(angle, expand=1, fillcolor=(255, 255, 255, 0))
         y_pos = random.randint(height // 3, height // 2)  # Лучшее позиционирование
         img.paste(rotated, (x_offset, y_pos), rotated)
         x_offset += spacing + random.randint(-10, 10)
 
-    # Искажающие линии поверх текста
-    for _ in range(4):
+    # Искажающие линии поверх текста (менее агрессивные)
+    for _ in range(2):  # Меньше линий для лучшей читаемости
         start_y = random.randint(height // 3, 2 * height // 3)
         end_y = random.randint(height // 3, 2 * height // 3)
         d.line([(0, start_y), (width, end_y)],
-               fill=(random.randint(0, 150), random.randint(0, 150), random.randint(0, 150)),
-               width=2)
+               fill=(random.randint(200, 220), random.randint(200, 220), random.randint(200, 220)),  # Более светлые линии
+               width=1)  # Тонкие линии
 
     # В байты
     img_byte_arr = BytesIO()
