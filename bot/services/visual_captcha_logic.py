@@ -23,14 +23,36 @@ logger = logging.getLogger(__name__)
 
 async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
     """Генерация визуальной капчи (число, текст или простая математика)."""
-    width, height = 400, 150
+    width, height = 500, 200  # Увеличиваем размер для лучшей читаемости
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
 
-    try:
-        fonts = [ImageFont.truetype("arial.ttf", size) for size in (48, 52, 56, 50)]
-    except IOError:
-        fonts = [ImageFont.load_default()]
+    # Пробуем разные пути к шрифтам
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
+        "/System/Library/Fonts/Arial.ttf",  # macOS
+        "arial.ttf",
+        "Arial.ttf"
+    ]
+    
+    fonts = []
+    for path in font_paths:
+        try:
+            fonts = [ImageFont.truetype(path, size) for size in (60, 65, 70, 75)]  # Увеличиваем размеры шрифтов
+            logger.info(f"Успешно загружен шрифт: {path}")
+            break
+        except (IOError, OSError):
+            continue
+    
+    # Если ни один шрифт не найден, создаем шрифт по умолчанию с большим размером
+    if not fonts:
+        try:
+            # Пробуем создать шрифт по умолчанию с размером
+            fonts = [ImageFont.load_default()]
+            logger.warning("Используется шрифт по умолчанию")
+        except:
+            fonts = [ImageFont.load_default()]
 
     captcha_type = random.choice(["number", "text", "math"])
 
@@ -79,13 +101,13 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
         angle = random.randint(-15, 15)
         font = random.choice(fonts)
 
-        char_img = Image.new("RGBA", (60, 70), (255, 255, 255, 0))
+        char_img = Image.new("RGBA", (80, 90), (255, 255, 255, 0))  # Увеличиваем размер символов
         char_draw = ImageDraw.Draw(char_img)
         color = (random.randint(0, 100), random.randint(0, 100), random.randint(0, 100))
 
         char_draw.text((5, 5), ch, font=font, fill=color)
         rotated = char_img.rotate(angle, expand=1, fillcolor=(255, 255, 255, 0))
-        y_pos = random.randint(height // 4, height // 2)
+        y_pos = random.randint(height // 3, height // 2)  # Лучшее позиционирование
         img.paste(rotated, (x_offset, y_pos), rotated)
         x_offset += spacing + random.randint(-10, 10)
 
