@@ -20,10 +20,6 @@ venv/
 *.log
 logs/
 
-# ==== ALEMBIC ====
-alembic/
-alembic.ini
-
 # ==== КОНФИГИ ====
 .env
 .env.*

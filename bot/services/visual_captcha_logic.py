@@ -98,18 +98,26 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
             answer = str(a * b)
             text_to_draw = f"{a}×{b}"
 
-    # Фоновые линии
-    for _ in range(8):
+    # Фоновые линии (больше и разнообразнее)
+    for _ in range(15):
         x1, y1 = random.randint(0, width), random.randint(0, height)
         x2, y2 = random.randint(0, width), random.randint(0, height)
         d.line([(x1, y1), (x2, y2)],
-               fill=(random.randint(160, 200), random.randint(160, 200), random.randint(160, 200)),
-               width=1)
+               fill=(random.randint(140, 220), random.randint(140, 220), random.randint(140, 220)),
+               width=random.randint(1, 3))
 
-    # Точечный шум
-    for _ in range(500):
+    # Точечный шум (больше точек)
+    for _ in range(800):
         d.point((random.randint(0, width), random.randint(0, height)),
                 fill=(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
+    
+    # Дополнительный шум - случайные фигуры
+    for _ in range(20):
+        x = random.randint(0, width)
+        y = random.randint(0, height)
+        size = random.randint(5, 15)
+        d.ellipse([x, y, x + size, y + size], 
+                  fill=(random.randint(180, 240), random.randint(180, 240), random.randint(180, 240)))
 
     # Посимвольный вывод с поворотами
     spacing = width // (len(text_to_draw) + 2)
@@ -120,7 +128,8 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
 
         char_img = Image.new("RGBA", (200, 240), (255, 255, 255, 0))  # Очень большой размер символов
         char_draw = ImageDraw.Draw(char_img)
-        color = (random.randint(0, 60), random.randint(0, 60), random.randint(0, 60))  # Очень темный цвет
+        # Менее контрастные цвета для усложнения распознавания ботами
+        color = (random.randint(20, 80), random.randint(20, 80), random.randint(20, 80))
 
         # Рисуем текст с большим отступом
         char_draw.text((20, 20), ch, font=font, fill=color)
@@ -135,13 +144,22 @@ async def generate_visual_captcha() -> Tuple[str, BufferedInputFile]:
         img.paste(rotated, (x_offset, y_pos), rotated)
         x_offset += spacing + random.randint(-10, 10)
 
-    # Искажающие линии поверх текста (менее агрессивные)
-    for _ in range(2):  # Меньше линий для лучшей читаемости
-        start_y = random.randint(height // 3, 2 * height // 3)
-        end_y = random.randint(height // 3, 2 * height // 3)
+    # Искажающие линии поверх текста (больше линий для защиты от ботов)
+    for _ in range(5):  # Больше линий для защиты от ботов
+        start_y = random.randint(height // 4, 3 * height // 4)
+        end_y = random.randint(height // 4, 3 * height // 4)
         d.line([(0, start_y), (width, end_y)],
-               fill=(random.randint(200, 220), random.randint(200, 220), random.randint(200, 220)),  # Более светлые линии
-               width=1)  # Тонкие линии
+               fill=(random.randint(180, 230), random.randint(180, 230), random.randint(180, 230)),
+               width=random.randint(1, 2))
+    
+    # Дополнительные кривые линии для усложнения
+    for _ in range(3):
+        points = []
+        for i in range(5):
+            x = i * width // 4
+            y = random.randint(height // 3, 2 * height // 3)
+            points.append((x, y))
+        d.line(points, fill=(random.randint(190, 240), random.randint(190, 240), random.randint(190, 240)), width=1)
 
     # В байты
     img_byte_arr = BytesIO()

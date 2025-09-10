@@ -24,6 +24,7 @@ from bot.handlers import handlers_router
 
 # Логгер
 import logging
+from bot.utils.logger import TelegramLogHandler
 
 # Настройка логгера
 logger = logging.getLogger()
@@ -35,6 +36,12 @@ console_handler.setLevel(logging.INFO)
 console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
+
+# Создаем обработчик для Telegram
+telegram_handler = TelegramLogHandler(level=logging.INFO)
+telegram_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+telegram_handler.setFormatter(telegram_formatter)
+logger.addHandler(telegram_handler)
 
 # Настройка логгеров aiogram - только консоль
 for logger_name in ("aiogram", "aiogram.dispatcher", "aiogram.event"):

@@ -12,6 +12,7 @@ from bot.services.groups_settings_in_private_logic import (
     toggle_visual_captcha,
     get_mute_new_members_status
 )
+from bot.middleware.access_control import ACCESS_CONTROL_ENABLED, enable_access_control, disable_access_control
 from bot.services.bot_activity_journal.bot_activity_journal_logic import log_visual_captcha_toggle, log_mute_settings_toggle
 from bot.services.new_member_requested_to_join_mute_logic import (
     create_mute_settings_keyboard,
@@ -28,6 +29,16 @@ async def settings_command(message: types.Message, session: AsyncSession):
     """Обработчик команды /settings"""
     user_id = message.from_user.id
     logger.info(f"Получена команда /settings от пользователя {user_id}")
+
+    # Проверяем, что это разрешенный пользователь
+    if user_id != 619924982:
+        await message.answer(
+            "🚫 <b>Доступ запрещен</b>\n\n"
+            "Вы не разработчик, пока не можем вам дать права.\n"
+            "Обратитесь к @texas_dev для получения доступа.",
+            parse_mode="HTML"
+        )
+        return
 
     try:
         # Получаем группы пользователя через сервис
@@ -47,6 +58,74 @@ async def settings_command(message: types.Message, session: AsyncSession):
     except Exception as e:
         logger.error(f"Ошибка при обработке команды /settings: {e}")
         await message.answer("❌ Произошла ошибка при получении ваших групп.")
+
+
+@group_settings_router.message(Command("bot_access"))
+async def bot_access_command(message: types.Message):
+    """Обработчик команды /bot_access - настройки доступа к боту"""
+    user_id = message.from_user.id
+    logger.info(f"Получена команда /bot_access от пользователя {user_id}")
+
+    # Проверяем, что это разрешенный пользователь
+    if user_id != 619924982:
+        await message.answer("❌ У вас нет прав для изменения настроек доступа к боту.")
+        return
+
+    try:
+        # Создаем клавиатуру для управления доступом
+        keyboard = create_access_control_keyboard()
+        
+        # Формируем текст с текущим статусом
+        from bot.middleware.access_control import ACCESS_CONTROL_ENABLED
+        status_text = "🔒 <b>Ограничен</b> (только для разработчика)" if ACCESS_CONTROL_ENABLED else "🔓 <b>Открыт</b> (для всех пользователей)"
+        
+        text = (
+            f"🤖 <b>Настройки доступа к боту</b>\n\n"
+            f"Текущий режим: {status_text}\n\n"
+            f"Выберите режим работы бота:"
+        )
+
+        await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке команды /bot_access: {e}")
+        await message.answer("❌ Произошла ошибка при получении настроек доступа.")
+
+
+# Команда /start убрана - обрабатывается в visual_captcha_handler для deep links
+
+
+@group_settings_router.message(Command("help"))
+async def help_command(message: types.Message):
+    """Обработчик команды /help - список доступных команд"""
+    user_id = message.from_user.id
+    
+    # Базовые команды для всех пользователей
+    text = (
+        "🤖 <b>Доступные команды:</b>\n\n"
+        "📋 <b>Основные команды:</b>\n"
+        "• /settings - Настройки групп\n"
+        "• /help - Показать это сообщение\n\n"
+    )
+    
+    # Дополнительные команды только для разработчика
+    if user_id == 619924982:
+        text += (
+            "🔧 <b>Команды разработчика:</b>\n"
+            "• /bot_access - Настройки доступа к боту\n\n"
+        )
+    
+    text += (
+        "ℹ️ <b>Информация:</b>\n"
+        "Этот бот помогает управлять группами с функциями:\n"
+        "• Визуальная капча для новых участников\n"
+        "• Антиспам защита\n"
+        "• Настройки мута\n"
+        "• Рассылки\n\n"
+        "Для настройки бота используйте команду /settings"
+    )
+    
+    await message.answer(text, parse_mode="HTML")
 
 
 @group_settings_router.callback_query(F.data.startswith("manage_group_"))
@@ -360,3 +439,75 @@ async def create_group_management_keyboard(session: AsyncSession, chat_id: int):
     ])
 
     return keyboard
+
+
+def create_access_control_keyboard():
+    """Создает клавиатуру для управления доступом к боту"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔒 Только для разработчика",
+                    callback_data="access_control_restricted"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔓 Для всех пользователей",
+                    callback_data="access_control_open"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📊 Текущий статус",
+                    callback_data="access_control_status"
+                )
+            ]
+        ]
+    )
+    return keyboard
+
+
+@group_settings_router.callback_query(F.data.startswith("access_control_"))
+async def access_control_callback(callback: types.CallbackQuery):
+    """Обработчик callback'ов для управления доступом к боту"""
+    user_id = callback.from_user.id
+    
+    # Проверяем права
+    if user_id != 619924982:
+        await callback.answer("❌ У вас нет прав для изменения настроек доступа", show_alert=True)
+        return
+    
+    try:
+        action = callback.data.split("_")[-1]
+        
+        if action == "restricted":
+            enable_access_control()
+            status_text = "🔒 <b>Ограничен</b> (только для разработчика)"
+            await callback.answer("✅ Доступ ограничен только для разработчика", show_alert=True)
+            
+        elif action == "open":
+            disable_access_control()
+            status_text = "🔓 <b>Открыт</b> (для всех пользователей)"
+            await callback.answer("✅ Доступ открыт для всех пользователей", show_alert=True)
+            
+        elif action == "status":
+            # Импортируем актуальное значение
+            from bot.middleware.access_control import ACCESS_CONTROL_ENABLED
+            current_status = "🔒 <b>Ограничен</b> (только для разработчика)" if ACCESS_CONTROL_ENABLED else "🔓 <b>Открыт</b> (для всех пользователей)"
+            await callback.answer(f"Текущий статус: {current_status}", show_alert=True)
+            return
+        
+        # Обновляем сообщение с новым статусом
+        text = (
+            f"🤖 <b>Настройки доступа к боту</b>\n\n"
+            f"Текущий режим: {status_text}\n\n"
+            f"Выберите режим работы бота:"
+        )
+        
+        keyboard = create_access_control_keyboard()
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке callback доступа: {e}")
+        await callback.answer("❌ Произошла ошибка", show_alert=True)

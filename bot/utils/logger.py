@@ -58,15 +58,9 @@ class TelegramLogHandler(logging.Handler):
                 f"{record.getMessage()}"
             )
 
-            # Не отправлять в Telegram ошибки - только действия
-            if (
-                    record.levelname != "ERROR" and
-                    record.levelname != "CRITICAL" and
-                    "успешно прошел капчу" not in record.getMessage() and
-                    "Отправлена капча пользователю" not in record.getMessage() and
-                    "не решил капчу вовремя" not in record.getMessage()
-            ):
-                asyncio.create_task(self.send_log(message))
+            # Не отправлять в Telegram логи - только специальные события через send_formatted_log
+            # Этот обработчик теперь НЕ отправляет логи в Telegram
+            pass
 
         except Exception as e:
             print("❌ Ошибка логгера:", e)

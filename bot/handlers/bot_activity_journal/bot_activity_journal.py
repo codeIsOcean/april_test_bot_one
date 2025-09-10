@@ -143,25 +143,25 @@ async def format_activity_message(
         message += f"👋Время: {current_time}"
         
     elif event_type == "Визуальная капча включена":
-        message = f"🔐 <b>#{event_type}</b>\n\n"
+        message = f"🔐 <b>#Визуальная_капча_включена</b>\n\n"
         message += f"👤 <b>Кто:</b> {user_display}\n"
         message += f"🏢 <b>Группа:</b> {group_display}\n"
         message += f"⏰ <b>Когда:</b> {current_time}"
         
     elif event_type == "Визуальная капча выключена":
-        message = f"🔓 <b>#{event_type}</b>\n\n"
+        message = f"🔓 <b>#Визуальная_капча_выключена</b>\n\n"
         message += f"👤 <b>Кто:</b> {user_display}\n"
         message += f"🏢 <b>Группа:</b> {group_display}\n"
         message += f"⏰ <b>Когда:</b> {current_time}"
         
     elif event_type == "Настройка мута новых пользователей включена":
-        message = f"🔇 <b>#{event_type}</b>\n\n"
+        message = f"🔇 <b>#Настройка_мута_включена</b>\n\n"
         message += f"👤 <b>Кто:</b> {user_display}\n"
         message += f"🏢 <b>Группа:</b> {group_display}\n"
         message += f"⏰ <b>Когда:</b> {current_time}"
         
     elif event_type == "Настройка мута новых пользователей выключена":
-        message = f"🔊 <b>#{event_type}</b>\n\n"
+        message = f"🔊 <b>#Настройка_мута_выключена</b>\n\n"
         message += f"👤 <b>Кто:</b> {user_display}\n"
         message += f"🏢 <b>Группа:</b> {group_display}\n"
         message += f"⏰ <b>Когда:</b> {current_time}"
@@ -177,7 +177,7 @@ async def format_activity_message(
             added_by_display += f" [@{added_by_username}]"
         added_by_display += f" [{added_by_id}]"
         
-        message = f"🤖 <b>#{event_type}</b>\n\n"
+        message = f"🤖 <b>#БОТ_ДОБАВЛЕН_В_ГРУППУ</b>\n\n"
         message += f"👤 <b>Кто добавил:</b> {added_by_display}\n"
         message += f"🏢 <b>Группа:</b> {group_display}\n"
         message += f"⏰ <b>Когда:</b> {current_time}"
