@@ -186,7 +186,13 @@ async def handle_join_request(chat_join_request: ChatJoinRequest, session: Async
             )
             logger.info(f"📤 Капча отправлена пользователю {user.id}")
         except Exception as send_error:
-            logger.warning(f"⚠️ Не удалось отправить капчу пользовател�� {user.id}: {send_error}")
+            error_msg = str(send_error)
+            if "bot can't initiate conversation with a user" in error_msg:
+                logger.warning(f"⚠️ Пользователь {user.id} не начал диалог с ботом. Запрос на вступление будет отклонен.")
+            elif "bot was blocked by the user" in error_msg:
+                logger.warning(f"⚠️ Пользователь {user.id} заблокировал бота. Запрос на вступление будет отклонен.")
+            else:
+                logger.warning(f"⚠️ Не удалось отправить капчу пользователю {user.id}: {send_error}")
             # Пользователь заблокировал бота или не начал диалог
             return
         

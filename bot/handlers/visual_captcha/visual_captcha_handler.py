@@ -131,8 +131,30 @@ async def handle_join_request(join_request: ChatJoinRequest):
         await redis.setex(f"user_messages:{user_id}", 3600, str(msg.message_id))
 
     except Exception as e:
-        logger.error(f"❌ Ошибка при обработке запроса на вступление: {e}")
-        logger.debug(traceback.format_exc())
+        error_msg = str(e)
+        if "bot can't initiate conversation with a user" in error_msg:
+            logger.warning(f"⚠️ Пользователь {user_id} не начал диалог с ботом. Запрос на вступление будет отклонен.")
+            # Логируем неудачную попытку отправки капчи
+            await log_join_request(
+                bot=join_request.bot,
+                user=user,
+                chat=chat,
+                captcha_status="КАПЧА_НЕ_УДАЛАСЬ_НЕТ_ДИАЛОГА",
+                saved_to_db=False
+            )
+        elif "bot was blocked by the user" in error_msg:
+            logger.warning(f"⚠️ Пользователь {user_id} заблокировал бота. Запрос на вступление будет отклонен.")
+            # Логируем неудачную попытку отправки капчи
+            await log_join_request(
+                bot=join_request.bot,
+                user=user,
+                chat=chat,
+                captcha_status="КАПЧА_НЕ_УДАЛАСЬ_БОТ_ЗАБЛОКИРОВАН",
+                saved_to_db=False
+            )
+        else:
+            logger.error(f"❌ Ошибка при обработке запроса на вступление: {e}")
+            logger.debug(traceback.format_exc())
 
 
 @visual_captcha_handler_router.message(CommandStart(deep_link=True))

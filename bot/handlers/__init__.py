@@ -6,6 +6,7 @@ from .group_settings_handler import group_settings_router
 from .moderation_handlers import moderation_handlers_router
 from .visual_captcha import visual_captcha_router
 from .broadcast_handlers.broadcast_handlers import broadcast_router
+from .bot_moderation_handlers.new_member_requested_to_join_mute_handlers import new_member_requested_handler
 
 # Объединяем все роутеры в один
 from aiogram import Router
@@ -18,3 +19,4 @@ handlers_router.include_router(group_settings_router)
 handlers_router.include_router(moderation_handlers_router)
 handlers_router.include_router(visual_captcha_router)
 handlers_router.include_router(broadcast_router)
+handlers_router.include_router(new_member_requested_handler)

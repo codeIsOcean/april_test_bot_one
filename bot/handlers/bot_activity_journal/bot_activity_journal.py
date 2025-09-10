@@ -75,9 +75,9 @@ async def format_activity_message(
     
     # Формируем информацию о пользователе
     user_id = user_data.get('user_id', 'N/A')
-    username = user_data.get('username', '')
-    first_name = user_data.get('first_name', '')
-    last_name = user_data.get('last_name', '')
+    username = user_data.get('username', '') or ''
+    first_name = user_data.get('first_name', '') or ''
+    last_name = user_data.get('last_name', '') or ''
     
     user_display = f"{first_name} {last_name}".strip()
     if username:
@@ -120,11 +120,13 @@ async def format_activity_message(
         
     elif event_type == "пользовательудален":
         initiator_data = additional_info.get('initiator', {}) if additional_info else {}
-        initiator_name = initiator_data.get('first_name', '') + ' ' + initiator_data.get('last_name', '')
-        initiator_username = initiator_data.get('username', '')
+        first_name = initiator_data.get('first_name', '') or ''
+        last_name = initiator_data.get('last_name', '') or ''
+        initiator_name = f"{first_name} {last_name}".strip()
+        initiator_username = initiator_data.get('username', '') or ''
         initiator_id = initiator_data.get('user_id', 'N/A')
         
-        initiator_display = initiator_name.strip()
+        initiator_display = initiator_name
         if initiator_username:
             initiator_display += f" [@{initiator_username}]"
         initiator_display += f"[{initiator_id}]"
@@ -168,11 +170,13 @@ async def format_activity_message(
         
     elif event_type == "БОТ_ДОБАВЛЕН_В_ГРУППУ":
         added_by_data = additional_info.get('added_by', {}) if additional_info else {}
-        added_by_name = added_by_data.get('first_name', '') + ' ' + added_by_data.get('last_name', '')
-        added_by_username = added_by_data.get('username', '')
+        first_name = added_by_data.get('first_name', '') or ''
+        last_name = added_by_data.get('last_name', '') or ''
+        added_by_name = f"{first_name} {last_name}".strip()
+        added_by_username = added_by_data.get('username', '') or ''
         added_by_id = added_by_data.get('user_id', 'N/A')
         
-        added_by_display = added_by_name.strip()
+        added_by_display = added_by_name
         if added_by_username:
             added_by_display += f" [@{added_by_username}]"
         added_by_display += f" [{added_by_id}]"

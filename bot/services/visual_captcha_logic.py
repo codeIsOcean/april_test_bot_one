@@ -412,11 +412,12 @@ async def approve_chat_join_request(bot: Bot, chat_id: int, user_id: int) -> Dic
                 logger.info(f"✅ Запрос на вступление успешно одобрен для пользователя {user_id}")
                 break
             except Exception as e:
-                if "429" in str(e) and attempt < max_retries - 1:
+                error_msg = str(e)
+                if "429" in error_msg and attempt < max_retries - 1:
                     # Используем retry_after из ошибки, если есть, иначе увеличиваем задержку
-                    if "retry_after" in str(e):
+                    if "retry_after" in error_msg:
                         import re
-                        match = re.search(r'"retry_after":(\d+)', str(e))
+                        match = re.search(r'"retry_after":(\d+)', error_msg)
                         if match:
                             retry_after = int(match.group(1)) + 5  # Добавляем 5 секунд к указанному времени
                         else:
@@ -427,6 +428,28 @@ async def approve_chat_join_request(bot: Bot, chat_id: int, user_id: int) -> Dic
                     logger.warning(f"Rate limit при одобрении запроса, попытка {attempt + 1}/{max_retries}, ждем {retry_after}с")
                     await asyncio.sleep(retry_after)
                     continue
+                elif "HIDE_REQUESTER_MISSING" in error_msg:
+                    logger.warning(f"⚠️ Запрос на вступление для пользователя {user_id} не найден или уже обработан")
+                    # Проверяем, не является ли пользователь уже участником группы
+                    try:
+                        member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+                        if member.status in ["member", "administrator", "creator"]:
+                            logger.info(f"✅ Пользователь {user_id} уже является участником группы {chat_id}")
+                            result["success"] = True
+                            result["message"] = "Вы уже являетесь участником группы!"
+                            # Создаем ссылку на группу
+                            if chat.username:
+                                result["group_link"] = f"https://t.me/{chat.username}"
+                            break
+                    except Exception as member_error:
+                        logger.error(f"❌ Ошибка при проверке статуса участника: {member_error}")
+                    
+                    # Если пользователь не участник, считаем это успехом (возможно, запрос уже обработан)
+                    result["success"] = True
+                    result["message"] = "Запрос на вступление обработан!"
+                    if chat.username:
+                        result["group_link"] = f"https://t.me/{chat.username}"
+                    break
                 else:
                     raise e
 

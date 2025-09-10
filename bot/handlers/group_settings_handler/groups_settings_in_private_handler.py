@@ -152,7 +152,13 @@ async def manage_group_callback(callback: types.CallbackQuery, session: AsyncSes
 
     except Exception as e:
         logger.error(f"Ошибка при обработке управления группой: {e}")
-        await callback.answer("❌ Произошла ошибка", show_alert=True)
+        try:
+            await callback.answer("❌ Произошла ошибка", show_alert=True)
+        except:
+            pass  # Игнорируем ошибки при ответе на callback
+
+
+# Обработчики настроек мута находятся в new_member_requested_to_join_mute_handlers.py
 
 
 @group_settings_router.callback_query(F.data.startswith("toggle_visual_captcha_"))
@@ -399,6 +405,26 @@ def create_groups_keyboard(groups):
 
 async def send_group_management_menu(message: types.Message, session: AsyncSession, group):
     """Отправляет меню управления группой"""
+    # Сохраняем привязку пользователя к группе в Redis
+    from bot.services.redis_conn import redis
+    user_id = message.from_user.id
+    group_id = str(group.chat_id)
+    
+    logger.info(f"🔍 [GROUP_SETTINGS] Сохранение привязки пользователя {user_id} к группе {group_id}")
+    
+    await redis.hset(f"user:{user_id}", "group_id", group_id)
+    # TTL на всякий случай (30 минут)
+    await redis.expire(f"user:{user_id}", 30 * 60)
+    
+    # Проверяем что сохранилось
+    saved_group_id = await redis.hget(f"user:{user_id}", "group_id")
+    logger.info(f"🔍 [GROUP_SETTINGS] Проверка сохранения: user:{user_id} -> group_id: {saved_group_id}")
+    
+    if saved_group_id != group_id:
+        logger.error(f"❌ [GROUP_SETTINGS] ОШИБКА: Не удалось сохранить group_id для пользователя {user_id}")
+    else:
+        logger.info(f"✅ [GROUP_SETTINGS] Успешно сохранена привязка пользователя {user_id} к группе {group_id}")
+    
     text = f"⚙️ **Управление группой**\n\n"
     text += f"📋 **Название:** {group.title}\n"
     text += f"🆔 **ID:** `{group.chat_id}`\n\n"
@@ -426,7 +452,7 @@ async def create_group_management_keyboard(session: AsyncSession, chat_id: int):
         )],
         [InlineKeyboardButton(
             text=mute_text,
-            callback_data=f"mute_new_members_settings_{chat_id}"
+            callback_data=f"new_member_requested_handler_settings:{chat_id}"
         )],
         [InlineKeyboardButton(
             text="📢 Рассылки",
