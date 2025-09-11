@@ -23,4 +23,4 @@ logs/
 # ==== КОНФИГИ ====
 .env
 .env.*
-docker-compose.yml
+
