@@ -3,32 +3,44 @@ name: Deploy Bot to Server
 on:
   push:
     branches:
-      - main  # Если твоя основная ветка называется master — измени здесь
+      - main  # Измени на master, если у тебя основная ветка называется иначе
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup SSH
+      - name: 🔐 Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Add known hosts
+      - name: 🧾 Add known hosts
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Deploy to server via SSH
+      - name: 🚀 Deploy to server via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            set -e  # Прервать выполнение при ошибке
+
             cd ${{ secrets.SERVER_PATH }}
-            git pull origin main
+
+            echo "⏬ Обновляем код из Git..."
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd
+
+            echo "♻️ Пересобираем контейнер с нуля..."
             docker compose down
-            docker compose up --build -d
+            docker compose build --no-cache bot
+            docker compose up -d --force-recreate --remove-orphans
+
+            echo "✅ Деплой завершён успешно."
           EOF
+
